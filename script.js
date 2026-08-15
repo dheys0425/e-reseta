@@ -23,6 +23,103 @@
 
   const STORAGE_KEY = "reseta_clinic_profile_v1";
 
+  // ---------- Medicine categories (names only — doctor fills dosage/frequency/duration) ----------
+  const MEDICINE_CATEGORIES = {
+    "Heart / Cardiovascular": [
+      "Amlodipine", "Losartan", "Metoprolol", "Atorvastatin", "Clopidogrel",
+      "Aspirin (low-dose)", "Furosemide", "Digoxin", "Isosorbide Dinitrate", "Carvedilol"
+    ],
+    "Kidney / Renal": [
+      "Furosemide", "Sodium Bicarbonate", "Calcium Carbonate", "Losartan",
+      "Amlodipine", "Spironolactone", "Ferrous Sulfate", "Erythropoietin"
+    ],
+    "Diabetes / Endocrine": [
+      "Metformin", "Glimepiride", "Gliclazide", "Insulin (Regular)",
+      "Insulin (NPH)", "Sitagliptin", "Levothyroxine"
+    ],
+    "Respiratory": [
+      "Salbutamol", "Budesonide", "Montelukast", "Prednisone",
+      "Azithromycin", "Ambroxol", "Carbocisteine"
+    ],
+    "Gastrointestinal": [
+      "Omeprazole", "Ranitidine", "Domperidone", "Loperamide",
+      "Metoclopramide", "Lactulose"
+    ],
+    "Antibiotics": [
+      "Amoxicillin", "Amoxicillin-Clavulanate", "Cephalexin",
+      "Azithromycin", "Ciprofloxacin", "Metronidazole"
+    ],
+    "Pain / Anti-inflammatory": [
+      "Paracetamol", "Ibuprofen", "Mefenamic Acid", "Celecoxib", "Tramadol"
+    ],
+    "Neuro / Psych": [
+      "Amitriptyline", "Sertraline", "Gabapentin", "Diazepam", "Citalopram"
+    ],
+    "Vitamins / Supplements": [
+      "Multivitamins", "Ferrous Sulfate", "Folic Acid", "Vitamin B Complex", "Calcium + Vitamin D"
+    ]
+  };
+
+  // Tracks which checked medicine name maps to which row element
+  const checkedMedRows = new Map();
+
+  function renderCategoryTabs() {
+    const tabsEl = $("catTabs");
+    const names = Object.keys(MEDICINE_CATEGORIES);
+
+    tabsEl.innerHTML = "";
+    names.forEach((cat, i) => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "cat-tab" + (i === 0 ? " active" : "");
+      tab.textContent = cat;
+      tab.dataset.cat = cat;
+      tab.addEventListener("click", () => {
+        tabsEl.querySelectorAll(".cat-tab").forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        renderCategoryPanel(cat);
+      });
+      tabsEl.appendChild(tab);
+    });
+
+    renderCategoryPanel(names[0]);
+  }
+
+  function renderCategoryPanel(cat) {
+    const panelEl = $("catPanel");
+    panelEl.innerHTML = "";
+    MEDICINE_CATEGORIES[cat].forEach((drugName) => {
+      const item = document.createElement("div");
+      item.className = "cat-item";
+
+      const checkboxId = "med_" + cat.replace(/\W+/g, "") + "_" + drugName.replace(/\W+/g, "");
+      const checked = checkedMedRows.has(drugName) ? "checked" : "";
+
+      item.innerHTML =
+        '<input type="checkbox" id="' + checkboxId + '" ' + checked + '>' +
+        '<label for="' + checkboxId + '">' + drugName + "</label>";
+
+      const checkbox = item.querySelector("input");
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          const row = addMedRow({ name: drugName });
+          checkedMedRows.set(drugName, row);
+        } else {
+          const row = checkedMedRows.get(drugName);
+          if (row) {
+            row.remove();
+            checkedMedRows.delete(drugName);
+            renumberRows();
+            renderPreview();
+          }
+        }
+      });
+
+      panelEl.appendChild(item);
+    });
+  }
+
+  // ---------- Medicine rows ----------
   function addMedRow(data) {
     const frag = medRowTemplate.content.cloneNode(true);
     const row = frag.querySelector(".med-row");
@@ -37,6 +134,22 @@
     }
 
     row.querySelector(".med-remove").addEventListener("click", () => {
+      // If this row came from a checked category item, uncheck it too
+      for (const [name, r] of checkedMedRows.entries()) {
+        if (r === row) {
+          checkedMedRows.delete(name);
+          const cat = Object.keys(MEDICINE_CATEGORIES).find((c) =>
+            MEDICINE_CATEGORIES[c].includes(name)
+          );
+          if (cat) {
+            const cb = document.getElementById(
+              "med_" + cat.replace(/\W+/g, "") + "_" + name.replace(/\W+/g, "")
+            );
+            if (cb) cb.checked = false;
+          }
+          break;
+        }
+      }
       row.remove();
       renumberRows();
       renderPreview();
@@ -48,6 +161,7 @@
 
     renumberRows();
     renderPreview();
+    return row;
   }
 
   function renumberRows() {
@@ -59,6 +173,7 @@
 
   $("addMedBtn").addEventListener("click", () => addMedRow());
 
+  // ---------- Live preview ----------
   function renderPreview() {
     $("pvClinicName").textContent = fields.clinicName.value.trim() || "Clinic / Facility name";
     $("pvClinicAddress").textContent = fields.clinicAddress.value.trim() || "Clinic address";
@@ -84,6 +199,7 @@
     const dateVal = fields.patientDate.value;
     $("pvPatientDate").textContent = dateVal ? formatDate(dateVal) : "—";
 
+    // Medicines
     const rows = medListEl.querySelectorAll(".med-row");
     pvMedList.innerHTML = "";
     if (rows.length === 0) {
@@ -112,6 +228,7 @@
       });
     }
 
+    // Notes
     const notes = fields.notes.value.trim();
     if (notes) {
       $("pvNotesWrap").style.display = "block";
@@ -135,6 +252,7 @@
     return div.innerHTML;
   }
 
+  // ---------- Persistence (clinic/doctor info only, stays on this device) ----------
   function saveProfile() {
     const profile = {
       clinicName: fields.clinicName.value,
@@ -146,7 +264,9 @@
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-    } catch (e) {}
+    } catch (e) {
+      /* storage unavailable — ignore */
+    }
   }
 
   function loadProfile() {
@@ -157,23 +277,29 @@
       Object.keys(profile).forEach((key) => {
         if (fields[key]) fields[key].value = profile[key];
       });
-    } catch (e) {}
+    } catch (e) {
+      /* ignore */
+    }
   }
 
+  // ---------- Wire up field listeners ----------
   Object.values(fields).forEach((el) => el.addEventListener("input", renderPreview));
   fields.patientSex.addEventListener("change", renderPreview);
 
+  // ---------- Buttons ----------
   $("printBtn").addEventListener("click", () => window.print());
 
   $("clearBtn").addEventListener("click", () => {
     if (!confirm("Clear the whole form? This cannot be undone.")) return;
     Object.values(fields).forEach((el) => (el.value = ""));
     medListEl.innerHTML = "";
-    addMedRow();
+    checkedMedRows.clear();
     $("patientDate").value = todayISO();
+    renderCategoryTabs();
     renderPreview();
   });
 
+  // ---------- Init ----------
   function todayISO() {
     const d = new Date();
     return d.toISOString().slice(0, 10);
@@ -181,6 +307,6 @@
 
   loadProfile();
   fields.patientDate.value = todayISO();
-  addMedRow();
+  renderCategoryTabs();
   renderPreview();
 })();
