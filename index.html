@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reseta — Prescription Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="brand"><span class="brand-rx">℞</span> Reseta</span>
+    <span class="brand-sub">Prescription Generator</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ FORM PANEL ============ -->
+  <section class="panel form-panel" aria-label="Prescription details form">
+
+    <details class="card" open>
+      <summary>Clinic &amp; Doctor</summary>
+      <div class="card-body">
+        <div class="field">
+          <label for="clinicName">Clinic / Facility name</label>
+          <input type="text" id="clinicName" placeholder="e.g. Baliuag Family Clinic">
+        </div>
+        <div class="field">
+          <label for="clinicAddress">Address</label>
+          <input type="text" id="clinicAddress" placeholder="e.g. Poblacion, Baliuag, Bulacan">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="doctorName">Doctor's name</label>
+            <input type="text" id="doctorName" placeholder="Dr. Juan Dela Cruz">
+          </div>
+          <div class="field">
+            <label for="doctorLicense">PRC License No.</label>
+            <input type="text" id="doctorLicense" placeholder="0000000">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="doctorPtr">PTR No.</label>
+            <input type="text" id="doctorPtr" placeholder="0000000">
+          </div>
+          <div class="field">
+            <label for="doctorS2">S2 License No. <span class="optional">(if applicable)</span></label>
+            <input type="text" id="doctorS2" placeholder="0000000">
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>Patient</summary>
+      <div class="card-body">
+        <div class="field">
+          <label for="patientName">Patient name</label>
+          <input type="text" id="patientName" placeholder="Full name">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="patientAge">Age</label>
+            <input type="number" id="patientAge" min="0" placeholder="e.g. 34">
+          </div>
+          <div class="field">
+            <label for="patientSex">Sex</label>
+            <select id="patientSex">
+              <option value="">Select</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="patientDate">Date</label>
+          <input type="date" id="patientDate">
+        </div>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>Medications</summary>
+      <div class="card-body">
+        <div id="medList" class="med-list"></div>
+        <button type="button" id="addMedBtn" class="btn-add">+ Add medicine</button>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>Notes <span class="optional">(optional)</span></summary>
+      <div class="card-body">
+        <div class="field">
+          <label for="notes">Additional instructions</label>
+          <textarea id="notes" rows="3" placeholder="e.g. Take with food. Follow up after 7 days."></textarea>
+        </div>
+      </div>
+    </details>
+
+    <div class="action-row">
+      <button type="button" id="printBtn" class="btn-primary">Print Reseta</button>
+      <button type="button" id="clearBtn" class="btn-ghost">Clear form</button>
+    </div>
+    <p class="disclaimer">This tool formats and prints prescriptions. It does not check drug interactions, dosing safety, or contraindications — that clinical judgment remains with the prescribing doctor.</p>
+  </section>
+
+  <!-- ============ PREVIEW / RESETA PAD ============ -->
+  <section class="panel preview-panel" aria-label="Prescription preview">
+    <div class="pad-wrap">
+      <div class="pad" id="resetaPad">
+
+        <div class="pad-header">
+          <div class="pad-clinic">
+            <div class="pad-clinic-name" id="pvClinicName">Clinic / Facility name</div>
+            <div class="pad-clinic-address" id="pvClinicAddress">Clinic address</div>
+          </div>
+          <div class="pad-rx-mark">℞</div>
+        </div>
+
+        <div class="pad-doctor">
+          <span id="pvDoctorName">Doctor's name</span>
+          <span class="pad-doctor-meta">
+            <span id="pvDoctorLicense">PRC —</span>
+            &nbsp;·&nbsp;
+            <span id="pvDoctorPtr">PTR —</span>
+            <span id="pvS2Wrap" class="hidden">&nbsp;·&nbsp;<span id="pvDoctorS2"></span></span>
+          </span>
+        </div>
+
+        <hr class="pad-rule">
+
+        <div class="pad-patient-row">
+          <div><span class="pad-label">Patient</span> <span id="pvPatientName">—</span></div>
+          <div><span class="pad-label">Age/Sex</span> <span id="pvPatientAgeSex">—</span></div>
+          <div><span class="pad-label">Date</span> <span id="pvPatientDate">—</span></div>
+        </div>
+
+        <div class="pad-body">
+          <div class="pad-rx-symbol">℞</div>
+          <div id="pvMedList" class="pad-med-list">
+            <p class="pad-empty">No medications added yet.</p>
+          </div>
+        </div>
+
+        <div class="pad-notes" id="pvNotesWrap" style="display:none;">
+          <span class="pad-label">Notes</span>
+          <p id="pvNotes"></p>
+        </div>
+
+        <div class="pad-footer">
+          <div class="pad-sig-line">
+            <div class="sig-blank"></div>
+            <div class="sig-caption">Signature over printed name</div>
+          </div>
+        </div>
+
+      </div>
+      <p class="pad-hint">This is a live preview — it updates as you fill the form on the left.</p>
+    </div>
+  </section>
+
+</main>
+
+<template id="medRowTemplate">
+  <div class="med-row">
+    <div class="med-row-top">
+      <span class="med-index"></span>
+      <button type="button" class="med-remove" aria-label="Remove medicine">×</button>
+    </div>
+    <div class="field">
+      <label>Medicine name &amp; strength</label>
+      <input type="text" class="med-name" placeholder="e.g. Amoxicillin 500mg">
+    </div>
+    <div class="grid-3">
+      <div class="field">
+        <label>Dosage</label>
+        <input type="text" class="med-dosage" placeholder="e.g. 1 capsule">
+      </div>
+      <div class="field">
+        <label>Frequency</label>
+        <input type="text" class="med-frequency" placeholder="e.g. 3x a day">
+      </div>
+      <div class="field">
+        <label>Duration</label>
+        <input type="text" class="med-duration" placeholder="e.g. 7 days">
+      </div>
+    </div>
+    <div class="field">
+      <label>Quantity to dispense <span class="optional">(optional)</span></label>
+      <input type="text" class="med-qty" placeholder="e.g. #21">
+    </div>
+  </div>
+</template>
+
+<script src="script.js"></script>
+</body>
+</html>
